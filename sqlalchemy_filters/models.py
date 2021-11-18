@@ -13,15 +13,11 @@ from .exceptions import BadQuery, FieldNotFound, BadSpec
 def sqlalchemy_version_cmp(op, version):
     """compares sqla version < version"""
 
-    ops = {'<': operator.lt, '>=': operator.ge}
-    return ops[op](
-        tuple(sqlalchemy_version.split('.')),
-        tuple(version.split('.'))
-    )
+    ops = {"<": operator.lt, ">=": operator.ge}
+    return ops[op](tuple(sqlalchemy_version.split(".")), tuple(version.split(".")))
 
 
 class Field(object):
-
     def __init__(self, model, field_name):
         self.model = model
         self.field_name = field_name
@@ -29,9 +25,7 @@ class Field(object):
     def get_sqlalchemy_field(self):
         if self.field_name not in self._get_valid_field_names():
             raise FieldNotFound(
-                'Model {} has no column `{}`.'.format(
-                    self.model, self.field_name
-                )
+                "Model {} has no column `{}`.".format(self.model, self.field_name)
             )
         sqlalchemy_field = getattr(self.model, self.field_name)
 
@@ -49,7 +43,8 @@ class Field(object):
 
         column_names = columns.keys()
         hybrid_names = [
-            key for key, item in orm_descriptors.items()
+            key
+            for key, item in orm_descriptors.items()
             if _is_hybrid_property(item) or _is_hybrid_method(item)
         ]
 
@@ -57,11 +52,11 @@ class Field(object):
 
 
 def _is_hybrid_property(orm_descriptor):
-    return orm_descriptor.extension_type == symbol('HYBRID_PROPERTY')
+    return orm_descriptor.extension_type == symbol("HYBRID_PROPERTY")
 
 
 def _is_hybrid_method(orm_descriptor):
-    return orm_descriptor.extension_type == symbol('HYBRID_METHOD')
+    return orm_descriptor.extension_type == symbol("HYBRID_METHOD")
 
 
 def get_model_from_table(table):  # pragma: nocover
@@ -83,17 +78,15 @@ def get_query_models(query):  # pragma: nocover
     :returns:
         A dictionary with all the models included in the query.
     """
-    models = [col_desc['entity'] for col_desc in query.column_descriptions]
+    models = [col_desc["entity"] for col_desc in query.column_descriptions]
 
     # account joined entities
-    if sqlalchemy_version_cmp('<', '1.4'):
+    if sqlalchemy_version_cmp("<", "1.4"):
         models.extend(mapper.class_ for mapper in query._join_entities)
     else:
         try:
             models.extend(
-                mapper.class_
-                for mapper
-                in query._compile_state()._join_entities
+                mapper.class_ for mapper in query._compile_state()._join_entities
             )
         except (InvalidRequestError, AttributeError):
             # query might not contain columns yet, hence cannot be compiled
@@ -104,7 +97,7 @@ def get_query_models(query):  # pragma: nocover
             models.append(get_model_from_table(table_tuple[0]))
 
     # account also query.select_from entities
-    if sqlalchemy_version_cmp('<', '1.4'):
+    if sqlalchemy_version_cmp("<", "1.4"):
         if query._select_from_entity:
             models.append(query._select_from_entity.class_)
     else:
@@ -115,7 +108,7 @@ def get_query_models(query):  # pragma: nocover
 
 
 def get_model_from_spec(spec, query, default_model=None):
-    """ Determine the model to which a spec applies on a given query.
+    """Determine the model to which a spec applies on a given query.
 
     A spec that does not specify a model may be applied to a query that
     contains a single model. Otherwise the spec must specify the model to
@@ -140,15 +133,13 @@ def get_model_from_spec(spec, query, default_model=None):
     """
     models = get_query_models(query)
     if not models:
-        raise BadQuery('The query does not contain any models.')
+        raise BadQuery("The query does not contain any models.")
 
-    model_name = spec.get('model')
+    model_name = spec.get("model")
     if model_name is not None:
         models = [v for (k, v) in models.items() if k == model_name]
         if not models:
-            raise BadSpec(
-                'The query does not contain model `{}`.'.format(model_name)
-            )
+            raise BadSpec("The query does not contain model `{}`.".format(model_name))
         model = models[0]
     else:
         if len(models) == 1:
@@ -162,27 +153,26 @@ def get_model_from_spec(spec, query, default_model=None):
 
 
 def get_model_class_by_name(registry, name):
-    """ Return the model class matching `name` in the given `registry`.
-    """
+    """Return the model class matching `name` in the given `registry`."""
     for cls in registry.values():
-        if getattr(cls, '__name__', None) == name:
+        if getattr(cls, "__name__", None) == name:
             return cls
 
 
 def get_default_model(query):
-    """ Return the singular model from `query`, or `None` if `query` contains
+    """Return the singular model from `query`, or `None` if `query` contains
     multiple models.
     """
     query_models = get_query_models(query).values()
     if len(query_models) == 1:
-        default_model, = iter(query_models)
+        (default_model,) = iter(query_models)
     else:
         default_model = None
     return default_model
 
 
 def auto_join(query, *model_names):
-    """ Automatically join models to `query` if they're not already present
+    """Automatically join models to `query` if they're not already present
     and the join can be done implicitly.
     """
     # every model has access to the registry, so we can use any from the query
@@ -190,8 +180,8 @@ def auto_join(query, *model_names):
     last_model = list(query_models)[-1]
     model_registry = (
         last_model._decl_class_registry
-        if sqlalchemy_version_cmp('<', '1.4')
-        else last_model.registry._class_registry
+        if sqlalchemy_version_cmp("<", "1.4")
+        else last_model._sa_registry._class_registry
     )
 
     for name in model_names:
@@ -199,9 +189,8 @@ def auto_join(query, *model_names):
         if model and (model not in get_query_models(query).values()):
             try:
                 tmp = query.join(model)
-                if (
-                    sqlalchemy_version_cmp('>=', '1.4')
-                    and hasattr(tmp, '_compile_state')
+                if sqlalchemy_version_cmp(">=", "1.4") and hasattr(
+                    tmp, "_compile_state"
                 ):  # pragma: nocover
                     # https://docs.sqlalchemy.org/en/14/changelog/migration_14.html
                     # Many Core and ORM statement objects now perform much of

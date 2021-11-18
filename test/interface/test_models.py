@@ -142,7 +142,7 @@ class TestGetModelClassByName:
         return (
             Base._decl_class_registry
             if sqlalchemy_version_cmp('<', '1.4')
-            else Base.registry._class_registry
+            else Base._sa_registry._class_registry
         )
 
     def test_exists(self, registry):
